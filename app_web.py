@@ -3,8 +3,7 @@ import streamlit as st
 import json
 from collections import defaultdict
 from tool_core import analyze_rooms, normalize_recent_stats
-import os
-from PIL import Image
+st.set_page_config(page_title="Tool Dự Đoán Phòng", page_icon="🔍")
 
 image_path = os.path.join(os.path.dirname(__file__), "Untitled.png")
 image = Image.open(image_path)
@@ -20,7 +19,6 @@ room_data = {
     8: "Phòng Giám Đốc"
 }
 
-st.set_page_config(page_title="Tool Dự Đoán Phòng", page_icon="🔍")
 
 st.title("🔍 Tool Dự Đoán Phòng An Toàn")
 st.markdown("*Dự đoán phòng an toàn nhất dựa trên lịch sử và thống kê 100 trận gần nhất.*")
