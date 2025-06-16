@@ -3,7 +3,7 @@ import json
 import os
 from PIL import Image
 from collections import defaultdict
-from toolvth import analyze_rooms, normalize_recent_stats
+from tool_core import analyze_rooms, normalize_recent_stats
 
 # ⚙️ Cấu hình đầu trang
 st.set_page_config(page_title="Tool Dự Đoán Phòng", page_icon="🔍")
