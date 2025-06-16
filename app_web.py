@@ -3,41 +3,38 @@ import json
 import os
 from PIL import Image
 from collections import defaultdict
-from datetime import datetime
-from tool_core import analyze_rooms, normalize_recent_stats, check_gim_trend, too_repeated, get_cluster
+from toolvth import analyze_rooms, normalize_recent_stats, check_gim_trend, too_repeated
 
-# --- Setup ---
+# ⚙️ Cấu hình
 st.set_page_config(page_title="Tool Dự Đoán Phòng", page_icon="🔍")
-image_path = os.path.join(os.path.dirname(__file__), "Untitled.png")
-image = Image.open(image_path)
+
+# 🖼️ Hiển thị sơ đồ phòng
+image = Image.open(os.path.join(os.path.dirname(__file__), "Untitled.png"))
 st.image(image, caption="📷 Mô phỏng hệ thống phòng", use_container_width=True)
 
+# 📘 Tên phòng
 room_data = {
     1: "Phòng Nhân Sự", 2: "Phòng Tài Vụ", 3: "Phòng Giám Sát", 4: "Văn Phòng",
     5: "Phòng Trò Chuyện", 6: "Nhà Kho", 7: "Phòng Họp", 8: "Phòng Giám Đốc"
 }
 
-# --- Session State ---
-if "recent_rooms" not in st.session_state:
-    st.session_state.recent_rooms = []
-if "recent_stats" not in st.session_state:
-    st.session_state.recent_stats = {i: 12 for i in range(1, 9)}
-if "markov_map" not in st.session_state:
-    st.session_state.markov_map = defaultdict(lambda: defaultdict(int))
-if "suggested_history" not in st.session_state:
-    st.session_state.suggested_history = []
-if "build_history" not in st.session_state:
-    st.session_state.build_history = []
-if "build_boost_rounds" not in st.session_state:
-    st.session_state.build_boost_rounds = 0
+# 🧠 Session State
+for key, default in {
+    "recent_rooms": [], "recent_stats": {i: 12 for i in range(1, 9)},
+    "markov_map": defaultdict(lambda: defaultdict(int)),
+    "suggested_history": [], "build_history": [],
+    "build_boost_rounds": 0
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
 
-st.title("🔍 Tool Dự Đoán Phòng An Toàn (Web)")
+st.title("🔍 Tool Dự Đoán Phòng An Toàn")
 
-# --- Bắt đầu: Nhập 10 ván đầu & thống kê 100 trận ---
+# 🧾 Giao diện khởi tạo ban đầu
 if len(st.session_state.recent_rooms) < 10:
     st.subheader("📥 Nhập 10 phòng sát thủ đã vào gần đây:")
-    text_input = st.text_input("Nhập 10 số cách nhau bằng dấu cách (1–8):")
-    
+    text_input = st.text_input("Nhập 10 số cách nhau bằng dấu cách (1–8):", "")
+
     st.subheader("📊 Nhập số lần mỗi phòng bị vào trong 100 trận:")
     cols = st.columns(4)
     stats_input = {}
@@ -46,33 +43,38 @@ if len(st.session_state.recent_rooms) < 10:
             stats_input[rid] = st.number_input(room_data[rid], min_value=0, max_value=100, value=12)
 
     if st.button("✅ Khởi tạo"):
-        try:
-            recent = list(map(int, text_input.strip().split()))
-            if len(recent) != 10 or not all(1 <= r <= 8 for r in recent):
-                st.error("❌ Phải nhập đúng 10 số từ 1 đến 8.")
-            else:
-                st.session_state.recent_rooms = recent
-                st.session_state.recent_stats = normalize_recent_stats(stats_input)
-                st.success("✅ Khởi tạo thành công! Bây giờ bạn có thể nhập từng ván mới.")
-                st.experimental_rerun()
-        except:
-            st.error("❌ Dữ liệu không hợp lệ.")
+        raw = text_input.strip()
+        if not raw:
+            st.error("❌ Bạn chưa nhập danh sách 10 phòng sát thủ đã vào.")
+        else:
+            try:
+                recent = list(map(int, raw.split()))
+                if len(recent) != 10:
+                    st.error("❌ Bạn phải nhập đúng **10 số**.")
+                elif not all(1 <= r <= 8 for r in recent):
+                    st.error("❌ Chỉ được dùng số từ **1 đến 8**.")
+                else:
+                    st.session_state.recent_rooms = recent
+                    st.session_state.recent_stats = normalize_recent_stats(stats_input)
+                    st.success("✅ Khởi tạo thành công! Bây giờ bạn có thể nhập từng ván mới.")
+                    st.experimental_rerun()
+            except ValueError:
+                st.error("❌ Dữ liệu phải là các số cách nhau bằng dấu cách (ví dụ: `1 2 3 4 5 6 7 8 1 2`).")
 
+# 🔁 Sau khi đã khởi tạo
 else:
-    # --- Giao diện chính sau khi đã khởi tạo ---
     st.subheader("🔁 Nhập phòng sát thủ vừa vào:")
     new_room = st.number_input("Phòng mới:", min_value=1, max_value=8, step=1)
 
     col1, col2 = st.columns([1, 3])
     with col1:
         if st.button("➕ Thêm & Phân Tích"):
-            # Cập nhật lịch sử
+            # Cập nhật
             st.session_state.recent_rooms.append(new_room)
             if len(st.session_state.recent_rooms) > 10:
                 st.session_state.recent_rooms.pop(0)
 
-            # Cập nhật thống kê
-            st.session_state.recent_stats[new_room] = st.session_state.recent_stats.get(new_room, 0) + 1
+            st.session_state.recent_stats[new_room] += 1
             st.session_state.recent_stats = normalize_recent_stats(st.session_state.recent_stats)
 
             # Phân tích
@@ -85,19 +87,18 @@ else:
 
             gim_level = check_gim_trend(st.session_state.recent_rooms, new_room)
 
-            # Tránh spam
+            # Tránh gợi ý trùng
             st.session_state.suggested_history.append(safest_room)
             if len(st.session_state.suggested_history) > 10:
                 st.session_state.suggested_history.pop(0)
             if too_repeated(safest_room, st.session_state.suggested_history):
-                alt_rooms = sorted(probs.items(), key=lambda x: x[1])
-                for rid, _ in alt_rooms:
+                for rid, _ in sorted(probs.items(), key=lambda x: x[1]):
                     if rid != safest_room and not too_repeated(rid, st.session_state.suggested_history):
                         safest_room = rid
                         safest_prob = 100 - probs[rid]
                         break
 
-            # Build đề xuất
+            # Tính build
             build = round(safest_prob / 10) * 100
             if new_room == safest_room:
                 st.session_state.build_boost_rounds = 2
@@ -108,28 +109,24 @@ else:
                 build = min(build, 300)
             elif gim_level == 3:
                 build = 100
-
-            LARGE_BUILD = 700
-            recent_small = [b for b in st.session_state.build_history[-5:] if b < LARGE_BUILD]
-            if build >= LARGE_BUILD and len(recent_small) < 5:
+            if build >= 700 and len([b for b in st.session_state.build_history[-5:] if b < 700]) < 5:
                 build = 300
-
             build = max(100, min(build, 1000))
             st.session_state.build_history.append(build)
 
-            # Kết quả
-            st.success(f"🛡️ Phòng an toàn nhất: **{room_data[safest_room]}** ({safest_prob:.2f}% an toàn)")
+            # 🛡️ Kết quả
+            st.success(f"🛡️ Phòng an toàn nhất: **{room_data[safest_room]}** ({safest_prob:.2f}%)")
             st.info(f"🎯 Đề xuất đặt: **{build} build**")
 
-            # AI lừa
+            # Cảnh báo AI (nếu có)
             if os.path.exists("ai_deception_log.json"):
-                with open("ai_deception_log.json", "r") as f:
+                with open("ai_deception_log.json") as f:
                     data = json.load(f)
                     st.warning("⚠️ AI có dấu hiệu đánh lừa!")
-                    st.write(f"🕒 Phát hiện: `{data.get('last_deception_detected', '')}`")
+                    st.write(f"🕒 Thời điểm: `{data.get('last_deception_detected', '')}`")
                     st.write("📊 Cụm gần đây:", ", ".join(data.get("recent_clusters", [])))
 
-            # Biểu đồ
+            # Xác suất
             st.markdown("### 📊 Xác suất an toàn từng phòng:")
             for rid, prob in sorted(probs.items(), key=lambda x: x[1]):
                 safe_percent = max(0, min(100, 100 - prob))
@@ -141,6 +138,7 @@ else:
             st.session_state.clear()
             st.rerun()
 
+    # Hiển thị lịch sử
     st.markdown("### 🕓 Lịch sử gần đây:")
     st.write("🛑 Phòng đã vào:", [room_data[r] for r in st.session_state.recent_rooms])
     st.write("✅ Gợi ý gần đây:", [room_data[r] for r in st.session_state.suggested_history])
