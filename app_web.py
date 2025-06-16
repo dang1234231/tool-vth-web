@@ -1,12 +1,14 @@
-import streamlit as st
-from PIL import Image
-image = Image.open("Untitled.png")
-st.image(image, caption="📷 Mô phỏng hệ thống phòng", use_column_width=True)
+
 import streamlit as st
 import json
 from collections import defaultdict
 from tool_core import analyze_rooms, normalize_recent_stats
+import os
+from PIL import Image
 
+image_path = os.path.join(os.path.dirname(__file__), "Untitled.png")
+image = Image.open(image_path)
+st.image(image, caption="📷 Mô phỏng hệ thống phòng", use_column_width=True)
 room_data = {
     1: "Phòng Nhân Sự",
     2: "Phòng Tài Vụ",
