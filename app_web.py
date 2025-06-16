@@ -1,3 +1,4 @@
+import streamlit as st
 from PIL import Image
 image = Image.open("Untitled.png")
 st.image(image, caption="📷 Mô phỏng hệ thống phòng", use_column_width=True)
