@@ -10,7 +10,7 @@ from PIL import Image
 
 image_path = os.path.join(os.path.dirname(__file__), "Untitled.png")
 image = Image.open(image_path)
-st.image(image, caption="📷 Mô phỏng hệ thống phòng", use_column_width=True)
+st.image(image, caption="📷 Mô phỏng hệ thống phòng", use_container_width=True)
 room_data = {
     1: "Phòng Nhân Sự",
     2: "Phòng Tài Vụ",
