@@ -6,20 +6,20 @@ from collections import defaultdict
 from datetime import datetime
 from tool_core import analyze_rooms, normalize_recent_stats, check_gim_trend, too_repeated
 
-# ⚙️ Cấu hình
+# ⚙️ Cấu hình trang
 st.set_page_config(page_title="Tool Dự Đoán Phòng", page_icon="🔍")
 
-# 🖼️ Sơ đồ phòng
+# 🖼️ Hình ảnh sơ đồ phòng
 image = Image.open(os.path.join(os.path.dirname(__file__), "Untitled.png"))
 st.image(image, caption="📷 Mô phỏng hệ thống phòng", use_container_width=True)
 
-# 🏷️ Danh sách phòng
+# 📘 Danh sách phòng
 room_data = {
     1: "Phòng Nhân Sự", 2: "Phòng Tài Vụ", 3: "Phòng Giám Sát", 4: "Văn Phòng",
     5: "Phòng Trò Chuyện", 6: "Nhà Kho", 7: "Phòng Họp", 8: "Phòng Giám Đốc"
 }
 
-# 🧠 Session State mặc định
+# 🔁 Session State mặc định
 if "initialized" not in st.session_state:
     st.session_state.initialized = False
 if "recent_rooms" not in st.session_state:
@@ -37,7 +37,7 @@ if "build_boost_rounds" not in st.session_state:
 
 st.title("🔍 Tool Dự Đoán Phòng An Toàn")
 
-# 📥 Giao diện khởi tạo
+# 🧾 Giao diện khởi tạo ban đầu
 if not st.session_state.initialized:
     st.subheader("📥 Nhập 10 phòng sát thủ đã vào gần đây:")
     text_input = st.text_input("Nhập 10 số cách nhau bằng dấu cách (1–8):", "")
@@ -65,11 +65,11 @@ if not st.session_state.initialized:
                     st.session_state.recent_stats = normalize_recent_stats(stats_input)
                     st.session_state.initialized = True
                     st.success("✅ Khởi tạo thành công!")
-                    st.experimental_rerun()
+                    st.rerun()  # ✅ sửa ở đây
             except ValueError:
-                st.error("❌ Dữ liệu không hợp lệ. Nhập đúng định dạng như: `1 2 3 4 5 6 7 8 1 2`")
+                st.error("❌ Dữ liệu không hợp lệ. Nhập như: `1 2 3 4 5 6 7 8 1 2`")
 
-# 🔁 Giao diện chơi từng ván
+# 🔁 Giao diện chính sau khởi tạo
 else:
     st.subheader("🔁 Nhập phòng sát thủ vừa vào:")
     new_room = st.number_input("Phòng mới:", min_value=1, max_value=8, step=1)
@@ -81,6 +81,7 @@ else:
             st.session_state.recent_rooms.append(new_room)
             if len(st.session_state.recent_rooms) > 10:
                 st.session_state.recent_rooms.pop(0)
+
             st.session_state.recent_stats[new_room] += 1
             st.session_state.recent_stats = normalize_recent_stats(st.session_state.recent_stats)
 
@@ -94,7 +95,7 @@ else:
 
             gim_level = check_gim_trend(st.session_state.recent_rooms, new_room)
 
-            # Tránh spam
+            # Tránh gợi ý trùng
             st.session_state.suggested_history.append(safest_room)
             if len(st.session_state.suggested_history) > 10:
                 st.session_state.suggested_history.pop(0)
@@ -125,7 +126,7 @@ else:
             st.success(f"🛡️ Phòng an toàn nhất: **{room_data[safest_room]}** ({safest_prob:.2f}%)")
             st.info(f"🎯 Đề xuất đặt: **{build} build**")
 
-            # AI cảnh báo
+            # AI cảnh báo nếu có
             if os.path.exists("ai_deception_log.json"):
                 with open("ai_deception_log.json") as f:
                     data = json.load(f)
@@ -145,6 +146,7 @@ else:
             st.session_state.clear()
             st.rerun()
 
+    # Lịch sử
     st.markdown("### 🕓 Lịch sử gần đây:")
     st.write("🛑 Phòng đã vào:", [room_data[r] for r in st.session_state.recent_rooms])
     st.write("✅ Gợi ý gần đây:", [room_data[r] for r in st.session_state.suggested_history])
