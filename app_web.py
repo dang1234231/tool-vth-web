@@ -132,7 +132,7 @@ else:
             for rid, prob in sorted(probs.items(), key=lambda x: x[1]):
                 safe_percent = max(0, min(100, 100 - prob))
                 st.write(f"**{room_data[rid]}** — {safe_percent:.2f}% an toàn")
-                st.progress(safe_percent)
+                st.progress(safe_percent / 100)
 
     with col2:
         if st.button("🔁 Reset"):
